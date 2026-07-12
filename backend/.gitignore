@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Environment files
+.env
+.env.local
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Database/Prisma files
+# Ignore local SQLite DB files if used during development
+*.db
+*.db-journal
+dev.db
+dev.db-journal
+
+# Editor configuration
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
