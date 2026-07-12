@@ -91,8 +91,8 @@ const FuelExpenses = () => {
   };
 
   // Calculations
-  const totalFuelCost = fuelLogs.reduce((acc, curr) => acc + curr.cost, 0);
-  const totalExpenseCost = expenses.reduce((acc, curr) => acc + curr.amount, 0);
+  const totalFuelCost = fuelLogs.reduce((acc, curr) => acc + Number(curr.cost || 0), 0);
+  const totalExpenseCost = expenses.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
 
   return (
     <div className="space-y-6">
@@ -147,7 +147,7 @@ const FuelExpenses = () => {
             activeTab === 'fuel' ? 'border-primary text-primary font-bold' : 'border-transparent text-secondary hover:text-on-surface'
           }`}
         >
-          Fuel Purchases (₹{totalFuelCost.toFixed(2)})
+          Fuel Purchases (₹{Number(totalFuelCost || 0).toFixed(2)})
         </button>
         <button
           onClick={() => setActiveTab('expenses')}
@@ -155,7 +155,7 @@ const FuelExpenses = () => {
             activeTab === 'expenses' ? 'border-primary text-primary font-bold' : 'border-transparent text-secondary hover:text-on-surface'
           }`}
         >
-          General Expenses (₹{totalExpenseCost.toFixed(2)})
+          General Expenses (₹{Number(totalExpenseCost || 0).toFixed(2)})
         </button>
       </div>
 
@@ -195,7 +195,7 @@ const FuelExpenses = () => {
                     </td>
                     <td className="px-gutter py-3 text-right font-code text-secondary">{log.liters} L</td>
                     <td className="px-gutter py-3 text-right font-code text-secondary">{log.odometer} km</td>
-                    <td className="px-gutter py-3 text-right font-bold text-primary">₹{log.cost.toFixed(2)}</td>
+                    <td className="px-gutter py-3 text-right font-bold text-primary">₹{Number(log.cost || 0).toFixed(2)}</td>
                   </tr>
                 ))
               )}
@@ -232,7 +232,7 @@ const FuelExpenses = () => {
                     <td className="px-gutter py-3 text-secondary">
                       {exp.vehicle ? `${exp.vehicle.name_model} (${exp.vehicle.registration_number})` : '—'}
                     </td>
-                    <td className="px-gutter py-3 text-right font-bold text-primary">₹{exp.amount.toFixed(2)}</td>
+                    <td className="px-gutter py-3 text-right font-bold text-primary">₹{Number(exp.amount || 0).toFixed(2)}</td>
                   </tr>
                 ))
               )}
