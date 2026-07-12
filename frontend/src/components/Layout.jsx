@@ -1,11 +1,50 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import client from '../api/client';
 
 const Layout = ({ children }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState(null);
+  const [isOpen, setIsOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const searchRef = useRef(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (searchRef.current && !searchRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
+
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults(null);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    const handler = setTimeout(async () => {
+      try {
+        const response = await client.get(`/dashboard/search?q=${encodeURIComponent(searchQuery)}`);
+        setSearchResults(response.data);
+      } catch (err) {
+        console.error('Search failed:', err);
+      } finally {
+        setLoading(false);
+      }
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
 
   const menuItems = [
     { name: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
@@ -83,15 +122,150 @@ const Layout = ({ children }) => {
       {/* TopNavBar */}
       <header className="fixed top-0 right-0 w-[calc(100%-240px)] h-navbar_height bg-surface flex items-center justify-between px-gutter border-b border-outline-variant z-40">
         <div className="flex items-center gap-4 flex-1">
-          <div className="relative w-full max-w-md">
+          <div ref={searchRef} className="relative w-full max-w-md">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg">
               search
             </span>
             <input
               type="text"
               placeholder="Search transactions, vehicles, logs..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => setIsOpen(true)}
               className="w-full bg-surface-container-low border border-outline-variant rounded-lg pl-10 pr-4 py-1.5 text-body-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all"
             />
+            {isOpen && loading && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">
+                <span className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full"></span>
+              </div>
+            )}
+            {isOpen && searchResults && (
+              <div className="absolute left-0 right-0 mt-2 bg-white border border-outline-variant rounded-lg shadow-xl max-h-[400px] overflow-y-auto z-50 divide-y divide-outline-variant">
+                {/* Vehicles section */}
+                {searchResults.vehicles?.length > 0 && (
+                  <div className="p-3">
+                    <h4 className="text-[10px] font-bold text-outline uppercase tracking-wider mb-2">Vehicles</h4>
+                    <ul className="space-y-1">
+                      {searchResults.vehicles.map((v) => (
+                        <li key={v.id}>
+                          <button
+                            onClick={() => {
+                              navigate('/vehicles');
+                              setIsOpen(false);
+                            }}
+                            className="w-full text-left px-3 py-1.5 hover:bg-surface-container rounded text-body-sm transition-colors flex items-center justify-between"
+                          >
+                            <div>
+                              <p className="font-bold text-on-surface">{v.name_model}</p>
+                              <p className="text-xs text-secondary">{v.registration_number} • {v.type}</p>
+                            </div>
+                            <span className="text-[10px] bg-secondary-container text-on-secondary-container px-1.5 py-0.5 rounded uppercase font-semibold">
+                              {v.status}
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Drivers section */}
+                {searchResults.drivers?.length > 0 && (
+                  <div className="p-3">
+                    <h4 className="text-[10px] font-bold text-outline uppercase tracking-wider mb-2">Drivers</h4>
+                    <ul className="space-y-1">
+                      {searchResults.drivers.map((d) => (
+                        <li key={d.id}>
+                          <button
+                            onClick={() => {
+                              navigate('/drivers');
+                              setIsOpen(false);
+                            }}
+                            className="w-full text-left px-3 py-1.5 hover:bg-surface-container rounded text-body-sm transition-colors flex items-center justify-between"
+                          >
+                            <div>
+                              <p className="font-bold text-on-surface">{d.name}</p>
+                              <p className="text-xs text-secondary">Lic: {d.license_number} • {d.contact_number}</p>
+                            </div>
+                            <span className="text-[10px] bg-secondary-container text-on-secondary-container px-1.5 py-0.5 rounded uppercase font-semibold">
+                              {d.status}
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Trips section */}
+                {searchResults.trips?.length > 0 && (
+                  <div className="p-3">
+                    <h4 className="text-[10px] font-bold text-outline uppercase tracking-wider mb-2">Trips</h4>
+                    <ul className="space-y-1">
+                      {searchResults.trips.map((t) => (
+                        <li key={t.id}>
+                          <button
+                            onClick={() => {
+                              navigate('/trips');
+                              setIsOpen(false);
+                            }}
+                            className="w-full text-left px-3 py-1.5 hover:bg-surface-container rounded text-body-sm transition-colors flex items-center justify-between"
+                          >
+                            <div>
+                              <p className="font-bold text-on-surface">{t.trip_number}</p>
+                              <p className="text-xs text-secondary">{t.source} → {t.destination}</p>
+                            </div>
+                            <span className="text-[10px] bg-secondary-container text-on-secondary-container px-1.5 py-0.5 rounded uppercase font-semibold">
+                              {t.status}
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Maintenance section */}
+                {searchResults.maintenance?.length > 0 && (
+                  <div className="p-3">
+                    <h4 className="text-[10px] font-bold text-outline uppercase tracking-wider mb-2">Maintenance Logs</h4>
+                    <ul className="space-y-1">
+                      {searchResults.maintenance.map((m) => (
+                        <li key={m.id}>
+                          <button
+                            onClick={() => {
+                              navigate('/maintenance');
+                              setIsOpen(false);
+                            }}
+                            className="w-full text-left px-3 py-1.5 hover:bg-surface-container rounded text-body-sm transition-colors flex items-center justify-between"
+                          >
+                            <div>
+                              <p className="font-bold text-on-surface">{m.vehicle?.name_model || 'Vehicle'}</p>
+                              <p className="text-xs text-secondary truncate max-w-[280px]">{m.description}</p>
+                            </div>
+                            <span className="text-[10px] bg-secondary-container text-on-secondary-container px-1.5 py-0.5 rounded uppercase font-semibold">
+                              {m.status}
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* No results placeholder */}
+                {!(
+                  searchResults.vehicles?.length > 0 ||
+                  searchResults.drivers?.length > 0 ||
+                  searchResults.trips?.length > 0 ||
+                  searchResults.maintenance?.length > 0
+                ) && (
+                  <div className="p-4 text-center text-secondary text-body-sm">
+                    No results found for "{searchQuery}"
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
         

@@ -168,3 +168,77 @@ exports.exportTripsCsv = async (req, res) => {
     return res.status(500).json({ error: 'Failed to generate CSV export.' });
   }
 };
+
+exports.searchAll = async (req, res) => {
+  try {
+    const { q } = req.query;
+    if (!q || typeof q !== 'string') {
+      return res.json({ vehicles: [], trips: [], drivers: [], maintenance: [] });
+    }
+
+    const searchQuery = q.trim();
+
+    // 1. Search Vehicles (by registration_number, name_model, type, region)
+    const vehicles = await prisma.vehicle.findMany({
+      where: {
+        OR: [
+          { registration_number: { contains: searchQuery, mode: 'insensitive' } },
+          { name_model: { contains: searchQuery, mode: 'insensitive' } },
+          { type: { contains: searchQuery, mode: 'insensitive' } },
+          { region: { contains: searchQuery, mode: 'insensitive' } },
+        ],
+      },
+      take: 10,
+    });
+
+    // 2. Search Trips (by trip_number, source, destination)
+    const trips = await prisma.trip.findMany({
+      where: {
+        OR: [
+          { trip_number: { contains: searchQuery, mode: 'insensitive' } },
+          { source: { contains: searchQuery, mode: 'insensitive' } },
+          { destination: { contains: searchQuery, mode: 'insensitive' } },
+        ],
+      },
+      include: {
+        vehicle: true,
+        driver: true,
+      },
+      take: 10,
+    });
+
+    // 3. Search Drivers (by name, license_number, contact_number)
+    const drivers = await prisma.driver.findMany({
+      where: {
+        OR: [
+          { name: { contains: searchQuery, mode: 'insensitive' } },
+          { license_number: { contains: searchQuery, mode: 'insensitive' } },
+          { contact_number: { contains: searchQuery, mode: 'insensitive' } },
+        ],
+      },
+      take: 10,
+    });
+
+    // 4. Search MaintenanceLogs (by description)
+    const maintenance = await prisma.maintenanceLog.findMany({
+      where: {
+        description: { contains: searchQuery, mode: 'insensitive' },
+      },
+      include: {
+        vehicle: true,
+      },
+      take: 10,
+    });
+
+    return res.json({
+      vehicles,
+      trips,
+      drivers,
+      maintenance,
+    });
+  } catch (error) {
+    console.error('Global search error:', error);
+    return res.status(500).json({ error: 'Failed to perform search.' });
+  }
+};
+

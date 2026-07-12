@@ -9,6 +9,7 @@ router.use(auth);
 
 router.get('/stats', dashboardController.getStats);
 router.get('/charts', dashboardController.getChartsData);
+router.get('/search', dashboardController.searchAll);
 
 // CSV downloads can be accessed by FleetManagers and FinancialAnalysts
 router.get('/export-trips', requireRole(['FleetManager', 'FinancialAnalyst']), dashboardController.exportTripsCsv);
