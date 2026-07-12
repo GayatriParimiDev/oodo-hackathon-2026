@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import client from '../api/client';
+import ThemeToggle from './ui/ThemeToggle';
 
 const Layout = ({ children }) => {
   const { user, logout } = useAuth();
@@ -270,9 +271,7 @@ const Layout = ({ children }) => {
         </div>
         
         <div className="flex items-center gap-4">
-          <button className="p-2 text-secondary hover:bg-surface-container-low rounded-full transition-all">
-            <span className="material-symbols-outlined">notifications</span>
-          </button>
+          <ThemeToggle size="sm" />
           <div className="h-8 w-[1px] bg-outline-variant mx-2"></div>
           <div className="flex items-center gap-3">
             <div className="text-right hidden sm:block">
