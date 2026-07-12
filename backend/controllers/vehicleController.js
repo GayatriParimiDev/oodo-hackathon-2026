@@ -29,7 +29,7 @@ exports.getById = async (req, res) => {
     const vehicle = await prisma.vehicle.findUnique({
       where: { id },
       include: {
-        driver: true,
+        trips: true,
         maintenances: true,
         fuelLogs: true,
         expenses: true,
@@ -80,13 +80,8 @@ exports.create = async (req, res) => {
       region,
     };
 
-    if (driverId) {
-      data.driverId = driverId;
-    }
-
     const vehicle = await prisma.vehicle.create({
       data,
-      include: { driver: true },
     });
 
     return res.status(201).json(vehicle);
@@ -134,13 +129,12 @@ exports.update = async (req, res) => {
     if (region !== undefined) data.region = region;
     
     if (driverId !== undefined) {
-      data.driverId = driverId || null;
+      // Vehicle model doesn't have driverId relation in schema.prisma, skip
     }
 
     const vehicle = await prisma.vehicle.update({
       where: { id },
       data,
-      include: { driver: true },
     });
 
     return res.json(vehicle);

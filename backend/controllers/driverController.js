@@ -8,10 +8,6 @@ exports.getAll = async (req, res) => {
 
     const drivers = await prisma.driver.findMany({
       where: filter,
-      include: {
-        user: true,
-        vehicle: true,
-      },
     });
     return res.json(drivers);
   } catch (error) {
@@ -26,8 +22,6 @@ exports.getById = async (req, res) => {
     const driver = await prisma.driver.findUnique({
       where: { id },
       include: {
-        user: true,
-        vehicle: true,
         trips: true,
       },
     });
@@ -74,13 +68,8 @@ exports.create = async (req, res) => {
       status,
     };
 
-    if (userId) {
-      data.userId = userId;
-    }
-
     const driver = await prisma.driver.create({
       data,
-      include: { user: true },
     });
 
     return res.status(201).json(driver);
@@ -126,13 +115,12 @@ exports.update = async (req, res) => {
     if (status !== undefined) data.status = status;
     
     if (userId !== undefined) {
-      data.userId = userId || null;
+      // Driver model doesn't have userId relation in schema.prisma, skip
     }
 
     const driver = await prisma.driver.update({
       where: { id },
       data,
-      include: { user: true },
     });
 
     return res.json(driver);
