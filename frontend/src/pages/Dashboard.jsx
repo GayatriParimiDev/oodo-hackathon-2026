@@ -26,16 +26,18 @@ const Dashboard = () => {
   const [recentTrips, setRecentTrips] = useState([]);
   const [maintenanceQueue, setMaintenanceQueue] = useState([]);
   const [expiredLicenses, setExpiredLicenses] = useState([]);
+  const [realFuelEfficiency, setRealFuelEfficiency] = useState(0);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [statsRes, chartsRes, tripsRes, maintenanceRes, driversRes] = await Promise.all([
+        const [statsRes, chartsRes, tripsRes, maintenanceRes, driversRes, vehiclesRes] = await Promise.all([
           client.get('/dashboard/stats'),
           client.get('/dashboard/charts'),
           client.get('/trips?limit=5'),
           client.get('/maintenance?status=Active'),
-          client.get('/drivers')
+          client.get('/drivers'),
+          client.get('/vehicles'),
         ]);
 
         setStats(statsRes.data);
@@ -49,6 +51,23 @@ const Dashboard = () => {
           .filter(d => new Date(d.license_expiry_date) < today || d.status === 'Suspended')
           .slice(0, 5);
         setExpiredLicenses(flaggedDrivers);
+
+        // Build real fuel efficiency from vehicles data
+        const vehicleEfficiencies = vehiclesRes.data
+          .map(v => {
+            const completedTrips = (v.trips || []).filter(t => t.status === 'Completed');
+            const totalDist = completedTrips.reduce((a, t) => a + parseFloat(t.planned_distance || 0), 0);
+            const totalFuel = completedTrips.reduce((a, t) => a + parseFloat(t.fuel_consumed || 0), 0);
+            const fuelFromLogs = (v.fuelLogs || []).reduce((a, f) => a + parseFloat(f.liters || 0), 0);
+            const allFuel = totalFuel + fuelFromLogs;
+            return allFuel > 0 ? totalDist / allFuel : null;
+          })
+          .filter(e => e !== null);
+
+        const avgEfficiency = vehicleEfficiencies.length > 0
+          ? vehicleEfficiencies.reduce((a, b) => a + b, 0) / vehicleEfficiencies.length
+          : 0;
+        setRealFuelEfficiency(parseFloat(avgEfficiency.toFixed(2)));
         
         setLoading(false);
       } catch (err) {
@@ -90,23 +109,17 @@ const Dashboard = () => {
     { category: 'other', totalAmount: 1500 }
   ];
 
-  // Simulated 24h utilization trend
-  const utilization24h = [
-    { hour: '00:00', rate: 40 },
-    { hour: '04:00', rate: 55 },
-    { hour: '08:00', rate: 85 },
-    { hour: '12:00', rate: 90 },
-    { hour: '16:00', rate: 80 },
-    { hour: '20:00', rate: 60 },
-    { hour: '23:59', rate: 45 }
-  ];
+  // Build real utilization chart from vehiclesByStatus DB data
+  const statusOrder = ['Available', 'OnTrip', 'InShop', 'Retired'];
+  const utilization24h = statusOrder.map(s => ({
+    hour: s,
+    rate: stats?.vehiclesByStatus?.find(v => v.status === s)?._count || 0
+  }));
 
-  // Simulated monthly efficiency
+  // Real fuel efficiency chart — single data point + trend context
   const fuelEfficiencyTrend = [
-    { week: 'WK 01', mpg: 5.8 },
-    { week: 'WK 02', mpg: 6.0 },
-    { week: 'WK 03', mpg: 6.2 },
-    { week: 'WK 04', mpg: 6.5 }
+    { week: 'Fleet Avg', mpg: realFuelEfficiency },
+    { week: 'Target', mpg: 6.5 },
   ];
 
   return (
@@ -203,13 +216,13 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Realtime Fleet Load Chart */}
         <div className="col-span-12 lg:col-span-8 p-6 border border-outline-variant rounded bg-white">
-          <h3 className="font-title-md text-title-md text-on-surface mb-6">Fleet Utilization Trend</h3>
+          <h3 className="font-title-md text-title-md text-on-surface mb-6">Fleet Status Breakdown (Live)</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={utilization24h} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#edeeef" />
                 <XAxis dataKey="hour" stroke="#80747a" fontSize={11} tickLine={false} />
-                <YAxis stroke="#80747a" fontSize={11} tickLine={false} unit="%" />
+                <YAxis stroke="#80747a" fontSize={11} tickLine={false} unit=" veh" />
                 <Tooltip cursor={{ fill: '#f3f4f5' }} />
                 <Bar dataKey="rate" fill="#57344f" radius={[4, 4, 0, 0]} />
               </BarChart>
@@ -237,13 +250,13 @@ const Dashboard = () => {
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value) => `$${value}`} />
+                <Tooltip formatter={(value) => `₹${value}`} />
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute flex flex-col items-center">
               <span className="text-[10px] text-outline font-bold">TOTAL EXP</span>
               <span className="font-display text-title-md text-on-surface">
-                ${donutData.reduce((acc, curr) => acc + curr.totalAmount, 0).toFixed(0)}
+                ₹{donutData.reduce((acc, curr) => acc + curr.totalAmount, 0).toFixed(0)}
               </span>
             </div>
           </div>
@@ -254,7 +267,7 @@ const Dashboard = () => {
                   <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></span>
                   <span className="capitalize">{item.category}</span>
                 </div>
-                <span className="font-bold">${item.totalAmount.toFixed(2)}</span>
+                <span className="font-bold">₹{item.totalAmount.toFixed(2)}</span>
               </div>
             ))}
           </div>
@@ -262,14 +275,14 @@ const Dashboard = () => {
 
         {/* Fuel Efficiency Chart */}
         <div className="col-span-12 lg:col-span-6 p-6 border border-outline-variant rounded bg-white">
-          <h3 className="font-title-md text-title-md text-on-surface mb-6 font-bold">Fuel Efficiency (MPG Avg)</h3>
+          <h3 className="font-title-md text-title-md text-on-surface mb-6 font-bold">Fuel Efficiency — Fleet vs Target (km/L)</h3>
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={fuelEfficiencyTrend} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#edeeef" />
                 <XAxis dataKey="week" stroke="#80747a" fontSize={11} />
-                <YAxis stroke="#80747a" fontSize={11} domain={[5.0, 7.0]} />
-                <Tooltip />
+                <YAxis stroke="#80747a" fontSize={11} domain={['auto', 'auto']} />
+                <Tooltip formatter={(v) => `${v} km/L`} />
                 <Line type="monotone" dataKey="mpg" stroke="#57344f" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
               </LineChart>
             </ResponsiveContainer>

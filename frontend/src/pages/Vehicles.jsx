@@ -357,7 +357,7 @@ const Vehicles = () => {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="block text-label-md font-bold text-secondary uppercase">Acquisition Cost ($)</label>
+                  <label className="block text-label-md font-bold text-secondary uppercase">Acquisition Cost (₹)</label>
                   <input
                     type="number"
                     required

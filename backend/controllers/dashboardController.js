@@ -124,7 +124,7 @@ exports.exportTripsCsv = async (req, res) => {
         { id: 'cargo_weight', title: 'Cargo Weight (kg)' },
         { id: 'planned_distance', title: 'Planned Distance (km)' },
         { id: 'status', title: 'Status' },
-        { id: 'revenue', title: 'Revenue ($)' },
+        { id: 'revenue', title: 'Revenue (₹)' },
         { id: 'created_at', title: 'Created At' },
       ],
     });

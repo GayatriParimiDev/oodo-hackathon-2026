@@ -71,7 +71,7 @@ const Maintenance = () => {
     setError('');
 
     const payload = {
-      vehicle_id: parseInt(vehicleId),
+      vehicle_id: vehicleId,
       service_type: serviceType,
       description,
       estimated_cost: parseFloat(estimatedCost)
@@ -90,7 +90,7 @@ const Maintenance = () => {
 
   const handleOpenCloseJob = (job) => {
     setSelectedJob(job);
-    setActualCost(job.estimated_cost || '');
+    setActualCost(job.cost || '');
     setResolution('');
     setError('');
     setIsCloseJobOpen(true);
@@ -120,7 +120,7 @@ const Maintenance = () => {
   // KPI Calculations
   const activeCount = logs.filter(j => j.status === 'Active').length;
   const closedCount = logs.filter(j => j.status === 'Closed').length;
-  const totalSpend = logs.reduce((acc, curr) => acc + (curr.actual_cost || 0), 0);
+  const totalSpend = logs.reduce((acc, curr) => acc + parseFloat(curr.cost || 0), 0);
 
   return (
     <div className="space-y-6">
@@ -162,7 +162,7 @@ const Maintenance = () => {
         <div className="bg-white border border-outline-variant p-4 rounded">
           <p className="text-xs font-label-md text-secondary uppercase tracking-wider mb-1">Total Maintenance Spend</p>
           <div className="flex items-end justify-between mt-1">
-            <h3 className="text-2xl font-bold text-on-surface">${totalSpend.toFixed(2)}</h3>
+            <h3 className="text-2xl font-bold text-on-surface">₹{totalSpend.toFixed(2)}</h3>
             <span className="text-[10px] font-bold text-secondary bg-surface-variant/50 px-1.5 py-0.5 rounded-sm">LIFETIME</span>
           </div>
         </div>
@@ -226,9 +226,9 @@ const Maintenance = () => {
                         {job.resolution && <span className="text-[11px] text-secondary italic mt-1">Res: {job.resolution}</span>}
                       </div>
                     </td>
-                    <td className="px-gutter py-3 font-code">${job.estimated_cost.toFixed(2)}</td>
+                    <td className="px-gutter py-3 font-code">₹{parseFloat(job.cost || 0).toFixed(2)}</td>
                     <td className="px-gutter py-3 font-code font-bold text-on-surface">
-                      {job.actual_cost !== null ? `$${job.actual_cost.toFixed(2)}` : '—'}
+                      {job.status === 'Closed' ? `₹${parseFloat(job.cost || 0).toFixed(2)}` : '—'}
                     </td>
                     <td className="px-gutter py-3">
                       <span
@@ -242,8 +242,8 @@ const Maintenance = () => {
                       </span>
                     </td>
                     <td className="px-gutter py-3 text-secondary text-xs">
-                      <div>Opened: {new Date(job.opened_date).toLocaleDateString()}</div>
-                      {job.closed_date && <div>Closed: {new Date(job.closed_date).toLocaleDateString()}</div>}
+                      <div>Opened: {new Date(job.opened_at).toLocaleDateString()}</div>
+                      {job.closed_at && <div>Closed: {new Date(job.closed_at).toLocaleDateString()}</div>}
                     </td>
                     <td className="px-gutter py-3 text-right">
                       {job.status === 'Active' && (
@@ -318,7 +318,7 @@ const Maintenance = () => {
                 ></textarea>
               </div>
               <div>
-                <label className="block font-label-md text-label-md text-on-surface mb-1">Estimated Cost ($)</label>
+                <label className="block font-label-md text-label-md text-on-surface mb-1">Estimated Cost (₹)</label>
                 <input
                   type="number"
                   required
@@ -367,7 +367,7 @@ const Maintenance = () => {
               </p>
               
               <div>
-                <label className="block font-label-md text-label-md text-on-surface mb-1">Final Service Cost ($)</label>
+                <label className="block font-label-md text-label-md text-on-surface mb-1">Final Service Cost (₹)</label>
                 <input
                   type="number"
                   required

@@ -17,7 +17,7 @@ const FuelExpenses = () => {
   const [fuelVehicleId, setFuelVehicleId] = useState('');
   const [liters, setLiters] = useState('');
   const [fuelCost, setFuelCost] = useState('');
-  const [fuelOdometer, setFuelOdometer] = useState('');
+  const [fuelLogDate, setFuelLogDate] = useState('');
 
   // Expense Form State
   const [expVehicleId, setExpVehicleId] = useState('');
@@ -53,10 +53,10 @@ const FuelExpenses = () => {
     setError('');
 
     const payload = {
-      vehicle_id: parseInt(fuelVehicleId),
+      vehicle_id: fuelVehicleId,
       liters: parseFloat(liters),
       cost: parseFloat(fuelCost),
-      odometer: parseFloat(fuelOdometer),
+      log_date: fuelLogDate,
     };
 
     try {
@@ -74,7 +74,7 @@ const FuelExpenses = () => {
     setError('');
 
     const payload = {
-      vehicle_id: expVehicleId ? parseInt(expVehicleId) : null,
+      vehicle_id: expVehicleId || null,
       category,
       amount: parseFloat(amount),
       description,
@@ -111,7 +111,7 @@ const FuelExpenses = () => {
                 setFuelVehicleId('');
                 setLiters('');
                 setFuelCost('');
-                setFuelOdometer('');
+                setFuelLogDate(new Date().toISOString().split('T')[0]);
                 setError('');
                 setIsFuelModalOpen(true);
               }}
@@ -147,7 +147,7 @@ const FuelExpenses = () => {
             activeTab === 'fuel' ? 'border-primary text-primary font-bold' : 'border-transparent text-secondary hover:text-on-surface'
           }`}
         >
-          Fuel Purchases (${totalFuelCost.toFixed(2)})
+          Fuel Purchases (₹{totalFuelCost.toFixed(2)})
         </button>
         <button
           onClick={() => setActiveTab('expenses')}
@@ -155,7 +155,7 @@ const FuelExpenses = () => {
             activeTab === 'expenses' ? 'border-primary text-primary font-bold' : 'border-transparent text-secondary hover:text-on-surface'
           }`}
         >
-          General Expenses (${totalExpenseCost.toFixed(2)})
+          General Expenses (₹{totalExpenseCost.toFixed(2)})
         </button>
       </div>
 
@@ -189,13 +189,13 @@ const FuelExpenses = () => {
               ) : (
                 fuelLogs.map((log) => (
                   <tr key={log.id} className="hover:bg-surface-container-low/50">
-                    <td className="px-gutter py-3 text-secondary">{new Date(log.logged_date).toLocaleDateString()}</td>
+                    <td className="px-gutter py-3 text-secondary">{new Date(log.log_date).toLocaleDateString()}</td>
                     <td className="px-gutter py-3 font-bold text-on-surface">
                       {log.vehicle.name_model} ({log.vehicle.registration_number})
                     </td>
-                    <td className="px-gutter py-3 text-right font-code">{log.liters} L</td>
-                    <td className="px-gutter py-3 text-right font-code">{log.odometer} km</td>
-                    <td className="px-gutter py-3 text-right font-bold text-primary">${log.cost.toFixed(2)}</td>
+                    <td className="px-gutter py-3 text-right font-code text-secondary">{log.liters} L</td>
+                    <td className="px-gutter py-3 text-right font-code text-secondary">{log.odometer} km</td>
+                    <td className="px-gutter py-3 text-right font-bold text-primary">₹{log.cost.toFixed(2)}</td>
                   </tr>
                 ))
               )}
@@ -222,7 +222,7 @@ const FuelExpenses = () => {
               ) : (
                 expenses.map((exp) => (
                   <tr key={exp.id} className="hover:bg-surface-container-low/50">
-                    <td className="px-gutter py-3 text-secondary">{new Date(exp.logged_date).toLocaleDateString()}</td>
+                    <td className="px-gutter py-3 text-secondary">{new Date(exp.expense_date).toLocaleDateString()}</td>
                     <td className="px-gutter py-3">
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-secondary-container text-on-secondary-container uppercase">
                         {exp.category}
@@ -232,7 +232,7 @@ const FuelExpenses = () => {
                     <td className="px-gutter py-3 text-secondary">
                       {exp.vehicle ? `${exp.vehicle.name_model} (${exp.vehicle.registration_number})` : '—'}
                     </td>
-                    <td className="px-gutter py-3 text-right font-bold text-primary">${exp.amount.toFixed(2)}</td>
+                    <td className="px-gutter py-3 text-right font-bold text-primary">₹{exp.amount.toFixed(2)}</td>
                   </tr>
                 ))
               )}
@@ -282,7 +282,7 @@ const FuelExpenses = () => {
                 />
               </div>
               <div className="space-y-1">
-                <label className="block text-label-md font-bold text-secondary uppercase">Total Cost ($)</label>
+                <label className="block text-label-md font-bold text-secondary uppercase">Total Cost (₹)</label>
                 <input
                   type="number"
                   step="0.01"
@@ -294,13 +294,12 @@ const FuelExpenses = () => {
                 />
               </div>
               <div className="space-y-1">
-                <label className="block text-label-md font-bold text-secondary uppercase">Odometer at Fill-up (km)</label>
+                <label className="block text-label-md font-bold text-secondary uppercase">Date of Fill-up</label>
                 <input
-                  type="number"
+                  type="date"
                   required
-                  value={fuelOdometer}
-                  onChange={(e) => setFuelOdometer(e.target.value)}
-                  placeholder="e.g. 52300"
+                  value={fuelLogDate}
+                  onChange={(e) => setFuelLogDate(e.target.value)}
                   className="w-full h-8 px-3 border border-outline-variant rounded focus:outline-none"
                 />
               </div>
@@ -346,8 +345,6 @@ const FuelExpenses = () => {
                 >
                   <option value="toll">Tolls &amp; Weighing</option>
                   <option value="maintenance">Maintenance &amp; Spares</option>
-                  <option value="fuel">Fuel surcharge</option>
-                  <option value="insurance">Insurance premium</option>
                   <option value="other">Other fee</option>
                 </select>
               </div>
@@ -367,7 +364,7 @@ const FuelExpenses = () => {
                 </select>
               </div>
               <div className="space-y-1">
-                <label className="block text-label-md font-bold text-secondary uppercase">Amount ($)</label>
+                <label className="block text-label-md font-bold text-secondary uppercase">Amount (₹)</label>
                 <input
                   type="number"
                   step="0.01"

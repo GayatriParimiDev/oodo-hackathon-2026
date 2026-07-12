@@ -511,9 +511,9 @@ const Trips = () => {
                 />
               </div>
               <div className="space-y-1">
-                <label className="block font-label-md text-label-md text-on-surface-variant uppercase">Trip Revenue ($)</label>
+                <label className="block font-label-md text-label-md text-on-surface-variant uppercase">Trip Revenue (₹)</label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant font-label-md">$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant font-label-md">₹</span>
                   <input
                     type="number"
                     required

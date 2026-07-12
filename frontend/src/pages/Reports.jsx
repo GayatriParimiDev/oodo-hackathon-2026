@@ -26,37 +26,77 @@ const Reports = () => {
     const fetchReports = async () => {
       setLoading(true);
       try {
-        const [statsRes, vehiclesRes, maintenanceRes] = await Promise.all([
+        const [statsRes, vehiclesRes, maintenanceRes, chartsRes] = await Promise.all([
           client.get('/dashboard/stats'),
           client.get('/vehicles'),
-          client.get('/maintenance')
+          client.get('/maintenance'),
+          client.get('/dashboard/charts')
         ]);
 
-        // Synthesize some mock data combined with real DB counts for reporting
-        setData({
-          operationalCost: 482904.50,
-          utilization: 87.4,
-          fuelEfficiency: 6.2,
-          roi: 2.4,
+        // Calculate dynamic values
+        let totalFuelCost = 0;
+        let totalMaintenanceCost = 0;
+        let totalRevenue = 0;
+        let totalAcquisition = 0;
+        let totalDistance = 0;
+        let totalFuelLiters = 0;
+
+        vehiclesRes.data.forEach(v => {
+          totalAcquisition += parseFloat(v.acquisition_cost || 0);
+          
+          v.fuelLogs.forEach(f => {
+            totalFuelCost += parseFloat(f.cost || 0);
+            totalFuelLiters += parseFloat(f.liters || 0);
+          });
+          
+          v.maintenances.forEach(m => {
+            totalMaintenanceCost += parseFloat(m.cost || 0);
+          });
+
+          v.trips.forEach(t => {
+            if (t.status === 'Completed') {
+              totalRevenue += parseFloat(t.revenue || 0);
+              totalDistance += parseFloat(t.planned_distance || 0);
+              totalFuelLiters += parseFloat(t.fuel_consumed || 0);
+            }
+          });
         });
 
-        // Top Fuel Consumers mock/derived list
-        const consumers = vehiclesRes.data.map((v, i) => ({
-          id: v.id,
-          registration: v.registration_number,
-          model: v.name_model,
-          consumption: i === 0 ? '4.8 kWh/mi' : `${(12 + Math.random() * 4).toFixed(1)} MPG`,
-          cost: v.odometer * 0.12 + 1200
-        })).sort((a, b) => b.cost - a.cost).slice(0, 3);
+        const totalOperationalCost = totalFuelCost + totalMaintenanceCost;
+        const utilizationRate = chartsRes.data?.fleetUtilization?.utilizationRate || 0;
+        const fuelEfficiency = totalFuelLiters > 0 ? (totalDistance / totalFuelLiters) : 0;
+        const roi = totalAcquisition > 0 ? ((totalRevenue - totalOperationalCost) / totalAcquisition) : 0;
+
+        setData({
+          operationalCost: totalOperationalCost,
+          utilization: utilizationRate,
+          fuelEfficiency: fuelEfficiency,
+          roi: roi,
+        });
+
+        // Top Fuel Consumers list based on actual logged costs
+        const consumers = vehiclesRes.data.map((v) => {
+          const fuelCostSum = v.fuelLogs.reduce((acc, f) => acc + parseFloat(f.cost || 0), 0);
+          const fuelLitersSum = v.fuelLogs.reduce((acc, f) => acc + parseFloat(f.liters || 0), 0);
+          const distanceSum = v.trips.filter(t => t.status === 'Completed').reduce((acc, t) => acc + parseFloat(t.planned_distance || 0), 0);
+          
+          return {
+            id: v.id,
+            registration: v.registration_number,
+            model: v.name_model,
+            consumption: fuelLitersSum > 0 ? `${(distanceSum / fuelLitersSum).toFixed(1)} km/L` : '—',
+            cost: fuelCostSum
+          };
+        }).sort((a, b) => b.cost - a.cost).slice(0, 3);
         setTopConsumers(consumers);
 
         // Highest Maintenance Cost list
         const mCosts = maintenanceRes.data.map(m => ({
           registration: m.vehicle.registration_number,
           model: m.vehicle.name_model,
-          date: new Date(m.opened_date).toLocaleDateString(),
+          date: new Date(m.opened_at).toLocaleDateString(),
           status: m.status === 'Closed' ? 'Resolved' : 'In Shop',
-          cost: m.actual_cost || m.estimated_cost
+          cost: parseFloat(m.cost || 0)
         })).sort((a, b) => b.cost - a.cost).slice(0, 3);
         setHighMaintenance(mCosts);
 
@@ -69,9 +109,22 @@ const Reports = () => {
     fetchReports();
   }, []);
 
-  const handleExportCSV = () => {
-    // Open a direct link to the backend export endpoint
-    window.open('http://localhost:5000/api/dashboard/export-trips', '_blank');
+  const handleExportCSV = async () => {
+    try {
+      const response = await client.get('/dashboard/export-trips', {
+        responseType: 'blob',
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'trips-export.csv');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      console.error('Failed to export CSV:', err);
+      alert('Failed to download CSV export. Please make sure database is running.');
+    }
   };
 
   if (loading) {
@@ -133,8 +186,8 @@ const Reports = () => {
             <span className="text-[10px] font-bold text-tertiary-container bg-tertiary-fixed px-1.5 py-0.5 rounded">+12.5%</span>
           </div>
           <p className="text-outline font-label-md text-label-md uppercase tracking-wide">Operational Cost</p>
-          <p className="text-[28px] font-bold text-on-surface mt-1">${data.operationalCost.toLocaleString()}</p>
-          <p className="text-body-sm text-outline mt-2 italic">vs. $429,248 last month</p>
+          <p className="text-[28px] font-bold text-on-surface mt-1">₹{data.operationalCost.toLocaleString()}</p>
+          <p className="text-body-sm text-outline mt-2 italic">vs. ₹429,248 last month</p>
         </div>
 
         <div className="bg-white border border-outline-variant p-5 rounded relative overflow-hidden group">
@@ -157,7 +210,7 @@ const Reports = () => {
             <span className="text-[10px] font-bold text-error bg-error-container px-1.5 py-0.5 rounded">-1.4%</span>
           </div>
           <p className="text-outline font-label-md text-label-md uppercase tracking-wide">Fuel Efficiency</p>
-          <p className="text-[28px] font-bold text-on-surface mt-1">{data.fuelEfficiency} MPG</p>
+          <p className="text-[28px] font-bold text-on-surface mt-1">{data.fuelEfficiency.toFixed(1)} km/L</p>
           <p className="text-body-sm text-outline mt-2 italic">Fleet average</p>
         </div>
 
@@ -169,7 +222,7 @@ const Reports = () => {
             <span className="text-[10px] font-bold text-tertiary-container bg-tertiary-fixed px-1.5 py-0.5 rounded">+8.7%</span>
           </div>
           <p className="text-outline font-label-md text-label-md uppercase tracking-wide">Vehicle ROI</p>
-          <p className="text-[28px] font-bold text-on-surface mt-1">{data.roi}x</p>
+          <p className="text-[28px] font-bold text-on-surface mt-1">{data.roi.toFixed(2)}x</p>
           <p className="text-body-sm text-outline mt-2 italic">Estimated lifecycle</p>
         </div>
       </div>
@@ -262,7 +315,7 @@ const Reports = () => {
                     <td className="px-gutter py-3 font-code font-bold text-primary">{c.registration}</td>
                     <td className="px-gutter py-3">{c.model}</td>
                     <td className="px-gutter py-3 text-right">{c.consumption}</td>
-                    <td className="px-gutter py-3 text-right font-bold text-on-surface">${c.cost.toFixed(2)}</td>
+                    <td className="px-gutter py-3 text-right font-bold text-on-surface">₹{c.cost.toFixed(2)}</td>
                   </tr>
                 ))
               )}
@@ -301,7 +354,7 @@ const Reports = () => {
                         {m.status}
                       </span>
                     </td>
-                    <td className="px-gutter py-3 text-right font-bold text-on-surface">${m.cost.toFixed(2)}</td>
+                    <td className="px-gutter py-3 text-right font-bold text-on-surface">₹{m.cost.toFixed(2)}</td>
                   </tr>
                 ))
               )}

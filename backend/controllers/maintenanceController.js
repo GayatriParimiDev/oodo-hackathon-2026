@@ -42,10 +42,13 @@ exports.getById = async (req, res) => {
 
 exports.create = async (req, res) => {
   try {
-    const { vehicle_id, description, cost, status } = req.body;
+    const { vehicle_id, description, cost, status, service_type, estimated_cost } = req.body;
 
-    if (!vehicle_id || !description || cost === undefined) {
-      return res.status(400).json({ error: 'vehicle_id, description, and cost are required.' });
+    // Support both 'cost' and 'estimated_cost' for creation
+    const costValue = estimated_cost !== undefined ? estimated_cost : cost;
+
+    if (!vehicle_id || !description || costValue === undefined) {
+      return res.status(400).json({ error: 'vehicle_id, description, and cost/estimated_cost are required.' });
     }
 
     // Verify vehicle exists
@@ -57,8 +60,8 @@ exports.create = async (req, res) => {
     const logStatus = status || 'Active';
     const data = {
       vehicle_id,
-      description,
-      cost: parseFloat(cost),
+      description: service_type ? `[${service_type}] ${description}` : description,
+      cost: parseFloat(costValue),
       status: logStatus,
     };
 
@@ -112,7 +115,17 @@ exports.update = async (req, res) => {
     const data = {};
     if (vehicle_id !== undefined) data.vehicle_id = vehicle_id;
     if (description !== undefined) data.description = description;
-    if (cost !== undefined) data.cost = parseFloat(cost);
+    
+    // Support both 'cost' and 'actual_cost' for update
+    const { actual_cost, resolution } = req.body;
+    const costUpdate = actual_cost !== undefined ? actual_cost : req.body.cost;
+    if (costUpdate !== undefined) data.cost = parseFloat(costUpdate);
+    
+    // Append resolution notes to description if provided
+    if (resolution && resolution.trim()) {
+      const existingDesc = existingLog.description || '';
+      data.description = `${existingDesc}\n[Resolution]: ${resolution.trim()}`;
+    }
     
     const oldStatus = existingLog.status;
     const newStatus = status;

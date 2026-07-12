@@ -22,25 +22,43 @@ exports.getAll = async (req, res) => {
 
 exports.create = async (req, res) => {
   try {
-    const { vehicle_id, category, amount, expense_date, notes } = req.body;
+    const { vehicle_id, category, amount, expense_date, notes, description } = req.body;
 
-    if (!vehicle_id || !category || amount === undefined || !expense_date) {
-      return res.status(400).json({ error: 'vehicle_id, category, amount, and expense_date are required.' });
+    if (!category || amount === undefined) {
+      return res.status(400).json({ error: 'category and amount are required.' });
     }
 
-    // Verify vehicle
-    const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicle_id } });
-    if (!vehicle) {
-      return res.status(400).json({ error: 'Vehicle not found.' });
+    // Support both 'notes' and 'description' as the same field
+    const noteText = notes || description || null;
+    // Default expense_date to today if not provided
+    const expDate = expense_date ? new Date(expense_date) : new Date();
+
+    let vehicleId = vehicle_id || null;
+
+    // Verify vehicle if provided
+    if (vehicleId) {
+      const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
+      if (!vehicle) {
+        return res.status(400).json({ error: 'Vehicle not found.' });
+      }
+    }
+
+    // If no vehicleId provided, pick the first vehicle as a placeholder (Expense requires vehicle_id in schema)
+    if (!vehicleId) {
+      const firstVehicle = await prisma.vehicle.findFirst();
+      if (!firstVehicle) {
+        return res.status(400).json({ error: 'No vehicles exist in the system. Please register a vehicle first before logging expenses.' });
+      }
+      vehicleId = firstVehicle.id;
     }
 
     const expense = await prisma.expense.create({
       data: {
-        vehicle_id,
+        vehicle_id: vehicleId,
         category,
         amount: parseFloat(amount),
-        expense_date: new Date(expense_date),
-        notes: notes || null,
+        expense_date: expDate,
+        notes: noteText,
       },
       include: { vehicle: true },
     });
