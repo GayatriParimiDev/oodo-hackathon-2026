@@ -10,11 +10,12 @@ exports.getAll = async (req, res) => {
     const vehicles = await prisma.vehicle.findMany({
       where: filter,
       include: {
-      trips: true,
-      maintenances: true,
-      fuelLogs: true,
-      expenses: true,
-    }
+        trips: true,
+        maintenances: true,
+        fuelLogs: true,
+        expenses: true,
+        documents: true,
+      }
     });
     return res.json(vehicles);
   } catch (error) {
@@ -33,6 +34,7 @@ exports.getById = async (req, res) => {
         maintenances: true,
         fuelLogs: true,
         expenses: true,
+        documents: true,
       },
     });
 

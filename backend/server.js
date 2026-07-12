@@ -10,6 +10,7 @@ const maintenanceRoutes = require('./routes/maintenance');
 const dashboardRoutes = require('./routes/dashboard');
 const fuelLogRoutes = require('./routes/fuelLogs');
 const expenseRoutes = require('./routes/expenses');
+const vehicleDocumentRoutes = require('./routes/vehicleDocuments');
 
 const app = express();
 
@@ -32,6 +33,7 @@ app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/fuel-logs', fuelLogRoutes);
 app.use('/api/expenses', expenseRoutes);
+app.use('/api/vehicle-documents', vehicleDocumentRoutes);
 
 // Base route
 app.get('/', (req, res) => {

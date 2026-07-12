@@ -79,6 +79,7 @@ model Vehicle {
   maintenances        MaintenanceLog[]
   fuelLogs            FuelLog[]
   expenses            Expense[]
+  documents           VehicleDocument[]
 
   @@index([status])
 }
@@ -162,4 +163,20 @@ model Expense {
   expense_date DateTime        @db.Date
   notes        String?
   updated_at   DateTime        @default(now()) @updatedAt
+}
+
+model VehicleDocument {
+  id              String   @id @default(uuid()) @db.Uuid
+  vehicle_id      String   @db.Uuid
+  vehicle         Vehicle  @relation(fields: [vehicle_id], references: [id], onDelete: Cascade)
+  document_type   String   @db.VarChar(100)
+  document_number String   @db.VarChar(100)
+  issue_date      DateTime @db.Date
+  expiry_date     DateTime @db.Date
+  file_path       String?  @db.VarChar(255)
+  status          String   @db.VarChar(50)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @default(now()) @updatedAt
+
+  @@index([vehicle_id])
 }

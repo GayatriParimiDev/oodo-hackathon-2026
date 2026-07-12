@@ -10,6 +10,21 @@ const Vehicles = () => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editId, setEditId] = useState(null);
 
+  // Documents state
+  const [selectedVehicle, setSelectedVehicle] = useState(null);
+  const [isDocModalOpen, setIsDocModalOpen] = useState(false);
+  const [vehicleDocs, setVehicleDocs] = useState([]);
+  const [docLoading, setDocLoading] = useState(false);
+  const [isDocFormOpen, setIsDocFormOpen] = useState(false);
+  const [docEditId, setDocEditId] = useState(null);
+
+  // Doc form inputs
+  const [docType, setDocType] = useState('Registration');
+  const [docNumber, setDocNumber] = useState('');
+  const [docIssueDate, setDocIssueDate] = useState('');
+  const [docExpiryDate, setDocExpiryDate] = useState('');
+  const [docFilePath, setDocFilePath] = useState('');
+
   // Filters state
   const [statusFilter, setStatusFilter] = useState('');
   const [regionFilter, setRegionFilter] = useState('');
@@ -23,6 +38,101 @@ const Vehicles = () => {
   const [acquisitionCost, setAcquisitionCost] = useState('');
   const [status, setStatus] = useState('Available');
   const [region, setRegion] = useState('Central Metro');
+
+  const handleOpenDocumentsModal = async (vehicle) => {
+    setSelectedVehicle(vehicle);
+    setIsDocModalOpen(true);
+    setDocLoading(true);
+    setIsDocFormOpen(false);
+    setDocEditId(null);
+    try {
+      const res = await client.get(`/vehicle-documents?vehicle_id=${vehicle.id}`);
+      setVehicleDocs(res.data);
+    } catch (err) {
+      console.error('Error fetching documents:', err);
+    } finally {
+      setDocLoading(false);
+    }
+  };
+
+  const handleOpenCreateDocForm = () => {
+    setDocEditId(null);
+    setDocType('Registration');
+    setDocNumber('');
+    setDocIssueDate('');
+    setDocExpiryDate('');
+    setDocFilePath('');
+    setIsDocFormOpen(true);
+  };
+
+  const handleOpenEditDocForm = (doc) => {
+    setDocEditId(doc.id);
+    setDocType(doc.document_type);
+    setDocNumber(doc.document_number);
+    setDocIssueDate(new Date(doc.issue_date).toISOString().split('T')[0]);
+    setDocExpiryDate(new Date(doc.expiry_date).toISOString().split('T')[0]);
+    setDocFilePath(doc.file_path || '');
+    setIsDocFormOpen(true);
+  };
+
+  const handleDeleteDoc = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this document?')) return;
+    try {
+      await client.delete(`/vehicle-documents/${id}`);
+      const res = await client.get(`/vehicle-documents?vehicle_id=${selectedVehicle.id}`);
+      setVehicleDocs(res.data);
+      fetchVehicles();
+    } catch (err) {
+      console.error('Error deleting document:', err);
+      alert('Failed to delete document.');
+    }
+  };
+
+  const handleSubmitDoc = async (e) => {
+    e.preventDefault();
+    const payload = {
+      vehicle_id: selectedVehicle.id,
+      document_type: docType,
+      document_number: docNumber,
+      issue_date: docIssueDate,
+      expiry_date: docExpiryDate,
+      file_path: docFilePath || null,
+    };
+    try {
+      if (docEditId) {
+        await client.put(`/vehicle-documents/${docEditId}`, payload);
+      } else {
+        await client.post('/vehicle-documents', payload);
+      }
+      setIsDocFormOpen(false);
+      setDocEditId(null);
+      const res = await client.get(`/vehicle-documents?vehicle_id=${selectedVehicle.id}`);
+      setVehicleDocs(res.data);
+      fetchVehicles();
+    } catch (err) {
+      console.error('Error saving document:', err);
+      alert(err.response?.data?.error || 'Failed to save document.');
+    }
+  };
+
+  const getDocAlert = (vehicle) => {
+    if (!vehicle.documents || vehicle.documents.length === 0) return null;
+    const expired = vehicle.documents.filter(d => d.status === 'Expired');
+    const expiring = vehicle.documents.filter(d => d.status === 'Expiring Soon');
+    if (expired.length > 0) {
+      return {
+        type: 'expired',
+        message: `${expired.length} Expired Document${expired.length > 1 ? 's' : ''}`
+      };
+    }
+    if (expiring.length > 0) {
+      return {
+        type: 'expiring',
+        message: `${expiring.length} Document${expiring.length > 1 ? 's' : ''} Expiring Soon`
+      };
+    }
+    return null;
+  };
 
   const fetchVehicles = async () => {
     setLoading(true);
@@ -210,7 +320,27 @@ const Vehicles = () => {
             <tbody className="divide-y divide-outline-variant">
               {vehicles.map((v) => (
                 <tr key={v.id} className="hover:bg-surface-container-low transition-colors">
-                  <td className="px-gutter py-4 font-code text-code text-on-surface">{v.registration_number}</td>
+                  <td className="px-gutter py-4 font-code text-code text-on-surface">
+                    <div className="flex items-center gap-1.5">
+                      <span>{v.registration_number}</span>
+                      {(() => {
+                        const alertInfo = getDocAlert(v);
+                        if (!alertInfo) return null;
+                        if (alertInfo.type === 'expired') {
+                          return (
+                            <span className="material-symbols-outlined text-error text-[16px] cursor-pointer" title={alertInfo.message}>
+                              warning
+                            </span>
+                          );
+                        }
+                        return (
+                          <span className="material-symbols-outlined text-warning text-[16px] cursor-pointer" title={alertInfo.message}>
+                            info
+                          </span>
+                        );
+                      })()}
+                    </div>
+                  </td>
                   <td className="px-gutter py-4 font-title-md text-title-md text-on-surface">{v.name_model}</td>
                   <td className="px-gutter py-4 font-body-md text-body-md text-secondary">{v.type}</td>
                   <td className="px-gutter py-4 font-body-md text-body-md text-secondary">{v.max_load_capacity} kg</td>
@@ -233,13 +363,22 @@ const Vehicles = () => {
                   </td>
                   <td className="px-gutter py-4 text-right space-x-1">
                     <button
+                      onClick={() => handleOpenDocumentsModal(v)}
+                      title="Manage Documents"
+                      className="p-1 hover:bg-surface-container rounded text-secondary"
+                    >
+                      <span className="material-symbols-outlined text-lg">folder_open</span>
+                    </button>
+                    <button
                       onClick={() => handleOpenEditModal(v)}
+                      title="Edit Vehicle"
                       className="p-1 hover:bg-surface-container rounded text-secondary"
                     >
                       <span className="material-symbols-outlined text-lg">edit</span>
                     </button>
                     <button
                       onClick={() => handleDelete(v.id)}
+                      title="Delete Vehicle"
                       className="p-1 hover:bg-surface-container rounded text-secondary"
                     >
                       <span className="material-symbols-outlined text-lg text-error">delete</span>
@@ -303,40 +442,17 @@ const Vehicles = () => {
                   <select
                     value={type}
                     onChange={(e) => setType(e.target.value)}
-                    className="w-full h-8 px-3 border border-outline-variant rounded text-body-md focus:outline-none focus:border-primary"
+                    className="w-full h-8 px-2 border border-outline-variant rounded bg-white text-body-sm focus:outline-none focus:border-primary"
                   >
-                    <option>Transit Bus</option>
-                    <option>Cargo Van</option>
-                    <option>Heavy Truck</option>
-                    <option>Light Courier</option>
-                    <option>Van</option>
-                    <option>Semi Truck</option>
-                    <option>Box Truck</option>
+                    <option value="Transit Bus">Transit Bus</option>
+                    <option value="Heavy Truck">Heavy Truck</option>
+                    <option value="Cargo Van">Cargo Van</option>
+                    <option value="Standard Trailer">Standard Trailer</option>
+                    <option value="Reefer Trailer">Reefer Trailer</option>
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <label className="block text-label-md font-bold text-secondary uppercase">Region Assignment</label>
-                  <select
-                    value={region}
-                    onChange={(e) => setRegion(e.target.value)}
-                    className="w-full h-8 px-3 border border-outline-variant rounded text-body-md focus:outline-none focus:border-primary"
-                  >
-                    <option>Central Metro</option>
-                    <option>North-East</option>
-                    <option>South-West</option>
-                    <option>Coastline</option>
-                    <option>Austin</option>
-                    <option>Houston</option>
-                    <option>Dallas</option>
-                    <option>San Antonio</option>
-                    <option>El Paso</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-1">
-                  <label className="block text-label-md font-bold text-secondary uppercase">Max Load (kg)</label>
+                  <label className="block text-label-md font-bold text-secondary uppercase">Max Load Capacity (kg)</label>
                   <input
                     type="number"
                     required
@@ -400,6 +516,209 @@ const Vehicles = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Vehicle Document Management Modal */}
+      {isDocModalOpen && selectedVehicle && (
+        <div className="fixed inset-0 bg-neutral-900/40 backdrop-blur-[2px] z-[60] flex items-center justify-center">
+          <div className="bg-white w-full max-w-4xl border border-outline-variant shadow-xl overflow-hidden rounded-lg flex flex-col max-h-[85vh]">
+            <div className="px-6 py-4 bg-surface border-b border-outline-variant flex items-center justify-between">
+              <div>
+                <h3 className="font-headline text-headline text-on-surface">Vehicle Document Management</h3>
+                <p className="text-secondary text-body-sm mt-0.5">
+                  Managing documents for: <span className="font-bold text-primary">{selectedVehicle.registration_number}</span> — {selectedVehicle.name_model}
+                </p>
+              </div>
+              <button className="text-secondary hover:text-on-surface" onClick={() => setIsDocModalOpen(false)}>
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto flex-1 space-y-6">
+              {/* Document Form */}
+              {isDocFormOpen ? (
+                <form onSubmit={handleSubmitDoc} className="bg-surface-container-low p-5 border border-outline-variant rounded space-y-4">
+                  <h4 className="font-title-md text-title-md font-bold text-on-surface">
+                    {docEditId ? 'Edit Document Details' : 'Add New Document'}
+                  </h4>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-bold text-secondary uppercase">Document Type</label>
+                      <select
+                        value={docType}
+                        onChange={(e) => setDocType(e.target.value)}
+                        className="w-full h-8 px-2 border border-outline-variant rounded bg-white text-body-sm focus:outline-none focus:border-primary"
+                      >
+                        <option value="Registration">Registration</option>
+                        <option value="Insurance">Insurance</option>
+                        <option value="Road Permit">Road Permit</option>
+                        <option value="Emission Certificate">Emission Certificate</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-bold text-secondary uppercase">Document Number</label>
+                      <input
+                        type="text"
+                        required
+                        value={docNumber}
+                        onChange={(e) => setDocNumber(e.target.value)}
+                        placeholder="e.g. REG-12345-TX"
+                        className="w-full h-8 px-3 border border-outline-variant rounded focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-bold text-secondary uppercase">Issue Date</label>
+                      <input
+                        type="date"
+                        required
+                        value={docIssueDate}
+                        onChange={(e) => setDocIssueDate(e.target.value)}
+                        className="w-full h-8 px-3 border border-outline-variant rounded focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-bold text-secondary uppercase">Expiry Date</label>
+                      <input
+                        type="date"
+                        required
+                        value={docExpiryDate}
+                        onChange={(e) => setDocExpiryDate(e.target.value)}
+                        className="w-full h-8 px-3 border border-outline-variant rounded focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-[10px] font-bold text-secondary uppercase">Document Link / URL (Optional)</label>
+                    <input
+                      type="text"
+                      value={docFilePath}
+                      onChange={(e) => setDocFilePath(e.target.value)}
+                      placeholder="e.g. https://storage.googleapis.com/transitops-docs/insurance.pdf"
+                      className="w-full h-8 px-3 border border-outline-variant rounded focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsDocFormOpen(false)}
+                      className="h-8 px-4 bg-secondary-container text-on-secondary-container text-body-sm font-bold rounded hover:bg-secondary-fixed transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="h-8 px-6 bg-primary text-white text-body-sm font-bold rounded hover:opacity-90 transition-colors"
+                    >
+                      {docEditId ? 'Update Document' : 'Save Document'}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div className="flex justify-between items-center bg-surface-container-low p-4 border border-outline-variant rounded">
+                  <div>
+                    <h4 className="font-title-md text-title-md font-bold">Document Inventory</h4>
+                    <p className="text-secondary text-body-sm">Track compliance and expiry status.</p>
+                  </div>
+                  <button
+                    onClick={handleOpenCreateDocForm}
+                    className="h-8 px-4 bg-primary text-white text-body-sm font-bold rounded hover:opacity-90 transition-colors flex items-center gap-1.5"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">add</span>
+                    Add Document
+                  </button>
+                </div>
+              )}
+
+              {/* Documents Table */}
+              <div className="border border-outline-variant rounded overflow-hidden bg-white">
+                {docLoading ? (
+                  <div className="p-8 text-center text-secondary">Loading documents...</div>
+                ) : vehicleDocs.length === 0 ? (
+                  <div className="p-8 text-center text-secondary">No documents added yet.</div>
+                ) : (
+                  <table className="w-full text-left border-collapse">
+                    <thead className="bg-[#F9FAFB] border-b border-outline-variant">
+                      <tr className="text-[10px] uppercase text-outline font-bold">
+                        <th className="px-gutter py-2.5">Document Type</th>
+                        <th className="px-gutter py-2.5">Document Number</th>
+                        <th className="px-gutter py-2.5">Issue Date</th>
+                        <th className="px-gutter py-2.5">Expiry Date</th>
+                        <th className="px-gutter py-2.5">Status</th>
+                        <th className="px-gutter py-2.5 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-outline-variant text-body-sm">
+                      {vehicleDocs.map((doc) => (
+                        <tr key={doc.id} className="hover:bg-surface-container-low transition-colors">
+                          <td className="px-gutter py-3 font-bold text-on-surface">{doc.document_type}</td>
+                          <td className="px-gutter py-3 font-code">{doc.document_number}</td>
+                          <td className="px-gutter py-3 text-secondary">{new Date(doc.issue_date).toLocaleDateString()}</td>
+                          <td className="px-gutter py-3 text-secondary">{new Date(doc.expiry_date).toLocaleDateString()}</td>
+                          <td className="px-gutter py-3">
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded-[2px] text-[10px] font-bold border uppercase ${
+                                doc.status === 'Active'
+                                  ? 'bg-green-50 text-green-700 border-green-200'
+                                  : doc.status === 'Expiring Soon'
+                                  ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                  : 'bg-red-50 text-red-700 border-red-200'
+                              }`}
+                            >
+                              {doc.status}
+                            </span>
+                          </td>
+                          <td className="px-gutter py-3 text-right space-x-1">
+                            {doc.file_path && (
+                              <a
+                                href={doc.file_path}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="View Document File"
+                                className="p-1 inline-block hover:bg-surface-container rounded text-secondary"
+                              >
+                                <span className="material-symbols-outlined text-lg">open_in_new</span>
+                              </a>
+                            )}
+                            <button
+                              onClick={() => handleOpenEditDocForm(doc)}
+                              title="Edit Document"
+                              className="p-1 hover:bg-surface-container rounded text-secondary"
+                            >
+                              <span className="material-symbols-outlined text-lg">edit</span>
+                            </button>
+                            <button
+                              onClick={() => handleDeleteDoc(doc.id)}
+                              title="Delete Document"
+                              className="p-1 hover:bg-surface-container rounded text-secondary"
+                            >
+                              <span className="material-symbols-outlined text-lg text-error">delete</span>
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+            
+            <div className="px-6 py-4 border-t border-outline-variant bg-surface-container-low flex justify-end">
+              <button
+                onClick={() => setIsDocModalOpen(false)}
+                className="h-10 px-6 bg-secondary-container text-on-secondary-container font-label-md text-label-md hover:bg-secondary-fixed transition-all"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
