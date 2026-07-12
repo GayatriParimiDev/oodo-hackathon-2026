@@ -10,8 +10,11 @@ exports.getAll = async (req, res) => {
     const vehicles = await prisma.vehicle.findMany({
       where: filter,
       include: {
-        driver: true,
-      },
+      trips: true,
+      maintenances: true,
+      fuelLogs: true,
+      expenses: true,
+    }
     });
     return res.json(vehicles);
   } catch (error) {

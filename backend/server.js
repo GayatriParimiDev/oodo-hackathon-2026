@@ -8,6 +8,8 @@ const driverRoutes = require('./routes/drivers');
 const tripRoutes = require('./routes/trips');
 const maintenanceRoutes = require('./routes/maintenance');
 const dashboardRoutes = require('./routes/dashboard');
+const fuelLogRoutes = require('./routes/fuelLogs');
+const expenseRoutes = require('./routes/expenses');
 
 const app = express();
 
@@ -28,6 +30,8 @@ app.use('/api/drivers', driverRoutes);
 app.use('/api/trips', tripRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/fuel-logs', fuelLogRoutes);
+app.use('/api/expenses', expenseRoutes);
 
 // Base route
 app.get('/', (req, res) => {

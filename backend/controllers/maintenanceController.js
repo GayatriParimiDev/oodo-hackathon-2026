@@ -54,23 +54,41 @@ exports.create = async (req, res) => {
       return res.status(400).json({ error: 'Vehicle not found.' });
     }
 
+    const logStatus = status || 'Active';
     const data = {
       vehicle_id,
       description,
       cost: parseFloat(cost),
-      status: status || 'Active',
+      status: logStatus,
     };
 
-    if (status === 'Closed') {
+    if (logStatus === 'Closed') {
       data.closed_at = new Date();
     }
 
-    const log = await prisma.maintenanceLog.create({
-      data,
+    // Create log and update vehicle status in a single transaction
+    const log = await prisma.$transaction(async (tx) => {
+      const createdLog = await tx.maintenanceLog.create({
+        data,
+      });
+
+      // If log is active, transition vehicle status to InShop
+      if (logStatus === 'Active') {
+        await tx.vehicle.update({
+          where: { id: vehicle_id },
+          data: { status: 'InShop' },
+        });
+      }
+
+      return createdLog;
+    });
+
+    const fullLog = await prisma.maintenanceLog.findUnique({
+      where: { id: log.id },
       include: { vehicle: true },
     });
 
-    return res.status(201).json(log);
+    return res.status(201).json(fullLog);
   } catch (error) {
     console.error('Create maintenance log error:', error);
     return res.status(500).json({ error: 'Failed to create maintenance log.' });
@@ -82,7 +100,11 @@ exports.update = async (req, res) => {
     const { id } = req.params;
     const { vehicle_id, description, cost, status } = req.body;
 
-    const existingLog = await prisma.maintenanceLog.findUnique({ where: { id } });
+    const existingLog = await prisma.maintenanceLog.findUnique({
+      where: { id },
+      include: { vehicle: true },
+    });
+
     if (!existingLog) {
       return res.status(404).json({ error: 'Maintenance log not found.' });
     }
@@ -92,22 +114,56 @@ exports.update = async (req, res) => {
     if (description !== undefined) data.description = description;
     if (cost !== undefined) data.cost = parseFloat(cost);
     
-    if (status !== undefined && status !== existingLog.status) {
-      data.status = status;
-      if (status === 'Closed') {
+    const oldStatus = existingLog.status;
+    const newStatus = status;
+
+    if (newStatus !== undefined && newStatus !== oldStatus) {
+      data.status = newStatus;
+      if (newStatus === 'Closed') {
         data.closed_at = new Date();
-      } else if (status === 'Active') {
+      } else if (newStatus === 'Active') {
         data.closed_at = null;
       }
     }
 
-    const log = await prisma.maintenanceLog.update({
-      where: { id },
-      data,
+    const log = await prisma.$transaction(async (tx) => {
+      const updatedLog = await tx.maintenanceLog.update({
+        where: { id },
+        data,
+      });
+
+      // Transition vehicle status
+      if (newStatus !== undefined && newStatus !== oldStatus) {
+        const targetVehicleId = vehicle_id || existingLog.vehicle_id;
+        
+        // Check if new status is Active -> set to InShop
+        if (newStatus === 'Active') {
+          await tx.vehicle.update({
+            where: { id: targetVehicleId },
+            data: { status: 'InShop' },
+          });
+        } 
+        // If status becomes Closed -> restore to Available (unless retired)
+        else if (newStatus === 'Closed') {
+          const currentVehicle = await tx.vehicle.findUnique({ where: { id: targetVehicleId } });
+          if (currentVehicle && currentVehicle.status !== 'Retired') {
+            await tx.vehicle.update({
+              where: { id: targetVehicleId },
+              data: { status: 'Available' },
+            });
+          }
+        }
+      }
+
+      return updatedLog;
+    });
+
+    const fullLog = await prisma.maintenanceLog.findUnique({
+      where: { id: log.id },
       include: { vehicle: true },
     });
 
-    return res.json(log);
+    return res.json(fullLog);
   } catch (error) {
     console.error('Update maintenance log error:', error);
     return res.status(500).json({ error: 'Failed to update maintenance log.' });
@@ -122,7 +178,21 @@ exports.delete = async (req, res) => {
       return res.status(404).json({ error: 'Maintenance log not found.' });
     }
 
-    await prisma.maintenanceLog.delete({ where: { id } });
+    // If deleting active maintenance, optionally restore vehicle to Available
+    await prisma.$transaction(async (tx) => {
+      await tx.maintenanceLog.delete({ where: { id } });
+      
+      if (existing.status === 'Active') {
+        const currentVehicle = await tx.vehicle.findUnique({ where: { id: existing.vehicle_id } });
+        if (currentVehicle && currentVehicle.status !== 'Retired') {
+          await tx.vehicle.update({
+            where: { id: existing.vehicle_id },
+            data: { status: 'Available' },
+          });
+        }
+      }
+    });
+
     return res.json({ message: 'Maintenance log deleted successfully.' });
   } catch (error) {
     console.error('Delete maintenance log error:', error);
