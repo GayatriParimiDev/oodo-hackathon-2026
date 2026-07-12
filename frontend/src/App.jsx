@@ -10,6 +10,7 @@ import Trips from './pages/Trips';
 import FuelExpenses from './pages/FuelExpenses';
 import Maintenance from './pages/Maintenance';
 import Reports from './pages/Reports';
+import Settings from './pages/Settings';
 
 const PrivateRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -91,6 +92,14 @@ function App() {
             element={
               <PrivateRoute>
                 <Reports />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <PrivateRoute>
+                <Settings />
               </PrivateRoute>
             }
           />

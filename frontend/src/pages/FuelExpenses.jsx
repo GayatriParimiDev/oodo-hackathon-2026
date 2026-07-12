@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import client from '../api/client';
+import { formatCurrency, formatDistance, getCurrencySymbol, getDistanceUnit } from '../utils/format';
 
 const FuelExpenses = () => {
   const [activeTab, setActiveTab] = useState('fuel'); // 'fuel' or 'expenses'
@@ -147,7 +148,7 @@ const FuelExpenses = () => {
             activeTab === 'fuel' ? 'border-primary text-primary font-bold' : 'border-transparent text-secondary hover:text-on-surface'
           }`}
         >
-          Fuel Purchases (₹{Number(totalFuelCost || 0).toFixed(2)})
+          Fuel Purchases ({formatCurrency(totalFuelCost)})
         </button>
         <button
           onClick={() => setActiveTab('expenses')}
@@ -155,7 +156,7 @@ const FuelExpenses = () => {
             activeTab === 'expenses' ? 'border-primary text-primary font-bold' : 'border-transparent text-secondary hover:text-on-surface'
           }`}
         >
-          General Expenses (₹{Number(totalExpenseCost || 0).toFixed(2)})
+          General Expenses ({formatCurrency(totalExpenseCost)})
         </button>
       </div>
 
@@ -194,8 +195,8 @@ const FuelExpenses = () => {
                       {log.vehicle.name_model} ({log.vehicle.registration_number})
                     </td>
                     <td className="px-gutter py-3 text-right font-code text-secondary">{log.liters} L</td>
-                    <td className="px-gutter py-3 text-right font-code text-secondary">{log.odometer} km</td>
-                    <td className="px-gutter py-3 text-right font-bold text-primary">₹{Number(log.cost || 0).toFixed(2)}</td>
+                    <td className="px-gutter py-3 text-right font-code text-secondary">{formatDistance(log.odometer)}</td>
+                    <td className="px-gutter py-3 text-right font-bold text-primary">{formatCurrency(log.cost)}</td>
                   </tr>
                 ))
               )}
@@ -232,7 +233,7 @@ const FuelExpenses = () => {
                     <td className="px-gutter py-3 text-secondary">
                       {exp.vehicle ? `${exp.vehicle.name_model} (${exp.vehicle.registration_number})` : '—'}
                     </td>
-                    <td className="px-gutter py-3 text-right font-bold text-primary">₹{Number(exp.amount || 0).toFixed(2)}</td>
+                    <td className="px-gutter py-3 text-right font-bold text-primary">{formatCurrency(exp.amount)}</td>
                   </tr>
                 ))
               )}
@@ -282,7 +283,7 @@ const FuelExpenses = () => {
                 />
               </div>
               <div className="space-y-1">
-                <label className="block text-label-md font-bold text-secondary uppercase">Total Cost (₹)</label>
+                <label className="block text-label-md font-bold text-secondary uppercase">Total Cost ({getCurrencySymbol()})</label>
                 <input
                   type="number"
                   step="0.01"
@@ -364,7 +365,7 @@ const FuelExpenses = () => {
                 </select>
               </div>
               <div className="space-y-1">
-                <label className="block text-label-md font-bold text-secondary uppercase">Amount (₹)</label>
+                <label className="block text-label-md font-bold text-secondary uppercase">Amount ({getCurrencySymbol()})</label>
                 <input
                   type="number"
                   step="0.01"

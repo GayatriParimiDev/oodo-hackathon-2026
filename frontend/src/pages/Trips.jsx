@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import client from '../api/client';
+import { formatDistance, getCurrencySymbol, getDistanceUnit } from '../utils/format';
 
 const Trips = () => {
   const [trips, setTrips] = useState([]);
@@ -248,7 +249,7 @@ const Trips = () => {
                     <td className="px-cell_padding_x py-4">
                       <div className="flex flex-col">
                         <span className="font-body-sm text-body-sm">{trip.source}</span>
-                        <span className="text-secondary text-[11px]">→ {trip.destination} ({trip.planned_distance} km)</span>
+                        <span className="text-secondary text-[11px]">→ {trip.destination} ({formatDistance(trip.planned_distance)})</span>
                       </div>
                     </td>
                     <td className="px-cell_padding_x py-4 font-body-sm text-body-sm">{trip.cargo_weight} kg</td>
@@ -414,7 +415,7 @@ const Trips = () => {
               </div>
 
               <div className="col-span-2 md:col-span-1 space-y-1">
-                <label className="font-label-md text-label-md text-on-surface-variant uppercase">Planned Distance (km)</label>
+                <label className="font-label-md text-label-md text-on-surface-variant uppercase">Planned Distance ({getDistanceUnit()})</label>
                 <input
                   type="number"
                   required
@@ -426,7 +427,7 @@ const Trips = () => {
               </div>
 
               <div className="col-span-2 md:col-span-1 space-y-1">
-                <label className="font-label-md text-label-md text-on-surface-variant uppercase">Start Odometer (km)</label>
+                <label className="font-label-md text-label-md text-on-surface-variant uppercase">Start Odometer ({getDistanceUnit()})</label>
                 <input
                   type="number"
                   value={startOdometer}
@@ -489,7 +490,7 @@ const Trips = () => {
 
             <form onSubmit={handleCompleteTrip} className="p-6 space-y-4">
               <div className="space-y-1">
-                <label className="block font-label-md text-label-md text-on-surface-variant uppercase">Final Odometer (km)</label>
+                <label className="block font-label-md text-label-md text-on-surface-variant uppercase">Final Odometer ({getDistanceUnit()})</label>
                 <input
                   type="number"
                   required
@@ -511,9 +512,9 @@ const Trips = () => {
                 />
               </div>
               <div className="space-y-1">
-                <label className="block font-label-md text-label-md text-on-surface-variant uppercase">Trip Revenue (₹)</label>
+                <label className="block font-label-md text-label-md text-on-surface-variant uppercase">Trip Revenue ({getCurrencySymbol()})</label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant font-label-md">₹</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant font-label-md">{getCurrencySymbol()}</span>
                   <input
                     type="number"
                     required

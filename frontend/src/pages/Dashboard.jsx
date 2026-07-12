@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import client from '../api/client';
+import { formatCurrency, formatFuelEfficiency, getCurrencySymbol, getDistanceUnit, getFuelEfficiencyUnit } from '../utils/format';
 import {
   BarChart,
   Bar,
@@ -250,13 +251,13 @@ const Dashboard = () => {
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value) => `₹${value}`} />
+                <Tooltip formatter={(value) => formatCurrency(value)} />
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute flex flex-col items-center">
               <span className="text-[10px] text-outline font-bold">TOTAL EXP</span>
               <span className="font-display text-title-md text-on-surface">
-                ₹{donutData.reduce((acc, curr) => acc + curr.totalAmount, 0).toFixed(0)}
+                {getCurrencySymbol()}{donutData.reduce((acc, curr) => acc + curr.totalAmount, 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </span>
             </div>
           </div>
@@ -267,7 +268,7 @@ const Dashboard = () => {
                   <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></span>
                   <span className="capitalize">{item.category}</span>
                 </div>
-                <span className="font-bold">₹{item.totalAmount.toFixed(2)}</span>
+                <span className="font-bold">{formatCurrency(item.totalAmount)}</span>
               </div>
             ))}
           </div>
@@ -275,14 +276,14 @@ const Dashboard = () => {
 
         {/* Fuel Efficiency Chart */}
         <div className="col-span-12 lg:col-span-6 p-6 border border-outline-variant rounded bg-white">
-          <h3 className="font-title-md text-title-md text-on-surface mb-6 font-bold">Fuel Efficiency — Fleet vs Target (km/L)</h3>
+          <h3 className="font-title-md text-title-md text-on-surface mb-6 font-bold">Fuel Efficiency — Fleet vs Target ({getFuelEfficiencyUnit()})</h3>
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={fuelEfficiencyTrend} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#edeeef" />
                 <XAxis dataKey="week" stroke="#80747a" fontSize={11} />
                 <YAxis stroke="#80747a" fontSize={11} domain={['auto', 'auto']} />
-                <Tooltip formatter={(v) => `${v} km/L`} />
+                <Tooltip formatter={(v) => formatFuelEfficiency(v)} />
                 <Line type="monotone" dataKey="mpg" stroke="#57344f" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
               </LineChart>
             </ResponsiveContainer>

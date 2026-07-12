@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import client from '../api/client';
+import { formatCurrency, getCurrencySymbol } from '../utils/format';
 
 const Maintenance = () => {
   const [logs, setLogs] = useState([]);
@@ -162,7 +163,7 @@ const Maintenance = () => {
         <div className="bg-white border border-outline-variant p-4 rounded">
           <p className="text-xs font-label-md text-secondary uppercase tracking-wider mb-1">Total Maintenance Spend</p>
           <div className="flex items-end justify-between mt-1">
-            <h3 className="text-2xl font-bold text-on-surface">₹{totalSpend.toFixed(2)}</h3>
+            <h3 className="text-2xl font-bold text-on-surface">{formatCurrency(totalSpend)}</h3>
             <span className="text-[10px] font-bold text-secondary bg-surface-variant/50 px-1.5 py-0.5 rounded-sm">LIFETIME</span>
           </div>
         </div>
@@ -226,9 +227,9 @@ const Maintenance = () => {
                         {job.resolution && <span className="text-[11px] text-secondary italic mt-1">Res: {job.resolution}</span>}
                       </div>
                     </td>
-                    <td className="px-gutter py-3 font-code">₹{parseFloat(job.cost || 0).toFixed(2)}</td>
+                    <td className="px-gutter py-3 font-code">{formatCurrency(job.cost)}</td>
                     <td className="px-gutter py-3 font-code font-bold text-on-surface">
-                      {job.status === 'Closed' ? `₹${parseFloat(job.cost || 0).toFixed(2)}` : '—'}
+                      {job.status === 'Closed' ? formatCurrency(job.cost) : '—'}
                     </td>
                     <td className="px-gutter py-3">
                       <span
@@ -318,7 +319,7 @@ const Maintenance = () => {
                 ></textarea>
               </div>
               <div>
-                <label className="block font-label-md text-label-md text-on-surface mb-1">Estimated Cost (₹)</label>
+                <label className="block font-label-md text-label-md text-on-surface mb-1">Estimated Cost ({getCurrencySymbol()})</label>
                 <input
                   type="number"
                   required
@@ -367,7 +368,7 @@ const Maintenance = () => {
               </p>
               
               <div>
-                <label className="block font-label-md text-label-md text-on-surface mb-1">Final Service Cost (₹)</label>
+                <label className="block font-label-md text-label-md text-on-surface mb-1">Final Service Cost ({getCurrencySymbol()})</label>
                 <input
                   type="number"
                   required

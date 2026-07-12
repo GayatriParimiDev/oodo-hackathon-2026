@@ -13,7 +13,23 @@ const Layout = ({ children }) => {
   const [searchResults, setSearchResults] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [depotName, setDepotName] = useState('Enterprise Logistics');
   const searchRef = useRef(null);
+
+  useEffect(() => {
+    const updateDepotName = () => {
+      const savedDepot = localStorage.getItem('settings_depot_name');
+      if (savedDepot) {
+        setDepotName(savedDepot);
+      } else {
+        setDepotName('Enterprise Logistics');
+      }
+    };
+    
+    updateDepotName();
+    window.addEventListener('settingsChanged', updateDepotName);
+    return () => window.removeEventListener('settingsChanged', updateDepotName);
+  }, []);
 
   useEffect(() => {
     const handleOutsideClick = (e) => {
@@ -75,7 +91,9 @@ const Layout = ({ children }) => {
           </div>
           <div>
             <h1 className="font-headline text-headline text-primary font-bold">TransitOps</h1>
-            <p className="text-[10px] font-label-sm text-secondary uppercase tracking-widest">Enterprise Logistics</p>
+            <p className="text-[10px] font-label-sm text-secondary uppercase tracking-widest truncate max-w-[160px]" title={depotName}>
+              {depotName}
+            </p>
           </div>
         </div>
         
@@ -102,13 +120,17 @@ const Layout = ({ children }) => {
         </nav>
         
         <div className="mt-auto border-t border-outline-variant p-2">
-          <a
-            href="#"
-            className="flex items-center gap-3 px-4 py-2 text-secondary hover:bg-surface-container transition-colors"
+          <Link
+            to="/settings"
+            className={`flex items-center gap-3 px-4 py-2 transition-colors ${
+              location.pathname === '/settings'
+                ? 'bg-surface-container-high text-primary border-l-4 border-primary font-semibold'
+                : 'text-secondary hover:bg-surface-container'
+            }`}
           >
             <span className="material-symbols-outlined">settings</span>
             <span className="font-body-md">Settings</span>
-          </a>
+          </Link>
           <a
             href="#"
             onClick={handleLogout}

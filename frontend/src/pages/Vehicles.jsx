@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import client from '../api/client';
+import { formatDistance, getCurrencySymbol, getDistanceUnit } from '../utils/format';
 
 const Vehicles = () => {
   const [vehicles, setVehicles] = useState([]);
@@ -213,7 +214,7 @@ const Vehicles = () => {
                   <td className="px-gutter py-4 font-title-md text-title-md text-on-surface">{v.name_model}</td>
                   <td className="px-gutter py-4 font-body-md text-body-md text-secondary">{v.type}</td>
                   <td className="px-gutter py-4 font-body-md text-body-md text-secondary">{v.max_load_capacity} kg</td>
-                  <td className="px-gutter py-4 font-body-md text-body-md text-secondary">{v.odometer} km</td>
+                  <td className="px-gutter py-4 font-body-md text-body-md text-secondary">{formatDistance(v.odometer)}</td>
                   <td className="px-gutter py-4 font-body-md text-body-md text-secondary">{v.region}</td>
                   <td className="px-gutter py-4">
                     <span
@@ -346,7 +347,7 @@ const Vehicles = () => {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="block text-label-md font-bold text-secondary uppercase">Odometer (km)</label>
+                  <label className="block text-label-md font-bold text-secondary uppercase">Odometer ({getDistanceUnit()})</label>
                   <input
                     type="number"
                     required
@@ -357,7 +358,7 @@ const Vehicles = () => {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="block text-label-md font-bold text-secondary uppercase">Acquisition Cost (₹)</label>
+                  <label className="block text-label-md font-bold text-secondary uppercase">Acquisition Cost ({getCurrencySymbol()})</label>
                   <input
                     type="number"
                     required

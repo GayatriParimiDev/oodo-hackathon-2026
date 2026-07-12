@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import client from '../api/client';
+import { formatCurrency, formatDistance, formatFuelEfficiency, getCurrencySymbol, getDistanceUnit, getFuelEfficiencyUnit } from '../utils/format';
 import {
   BarChart,
   Bar,
@@ -84,7 +85,7 @@ const Reports = () => {
             id: v.id,
             registration: v.registration_number,
             model: v.name_model,
-            consumption: fuelLitersSum > 0 ? `${(distanceSum / fuelLitersSum).toFixed(1)} km/L` : '—',
+            consumption: fuelLitersSum > 0 ? formatFuelEfficiency(distanceSum / fuelLitersSum) : '—',
             cost: fuelCostSum
           };
         }).sort((a, b) => b.cost - a.cost).slice(0, 3);
@@ -186,8 +187,8 @@ const Reports = () => {
             <span className="text-[10px] font-bold text-tertiary-container bg-tertiary-fixed px-1.5 py-0.5 rounded">+12.5%</span>
           </div>
           <p className="text-outline font-label-md text-label-md uppercase tracking-wide">Operational Cost</p>
-          <p className="text-[28px] font-bold text-on-surface mt-1">₹{data.operationalCost.toLocaleString()}</p>
-          <p className="text-body-sm text-outline mt-2 italic">vs. ₹429,248 last month</p>
+          <p className="text-[28px] font-bold text-on-surface mt-1">{formatCurrency(data.operationalCost)}</p>
+          <p className="text-body-sm text-outline mt-2 italic">vs. {formatCurrency(429248)} last month</p>
         </div>
 
         <div className="bg-white border border-outline-variant p-5 rounded relative overflow-hidden group">
@@ -210,7 +211,7 @@ const Reports = () => {
             <span className="text-[10px] font-bold text-error bg-error-container px-1.5 py-0.5 rounded">-1.4%</span>
           </div>
           <p className="text-outline font-label-md text-label-md uppercase tracking-wide">Fuel Efficiency</p>
-          <p className="text-[28px] font-bold text-on-surface mt-1">{data.fuelEfficiency.toFixed(1)} km/L</p>
+          <p className="text-[28px] font-bold text-on-surface mt-1">{formatFuelEfficiency(data.fuelEfficiency)}</p>
           <p className="text-body-sm text-outline mt-2 italic">Fleet average</p>
         </div>
 
@@ -315,7 +316,7 @@ const Reports = () => {
                     <td className="px-gutter py-3 font-code font-bold text-primary">{c.registration}</td>
                     <td className="px-gutter py-3">{c.model}</td>
                     <td className="px-gutter py-3 text-right">{c.consumption}</td>
-                    <td className="px-gutter py-3 text-right font-bold text-on-surface">₹{c.cost.toFixed(2)}</td>
+                    <td className="px-gutter py-3 text-right font-bold text-on-surface">{formatCurrency(c.cost)}</td>
                   </tr>
                 ))
               )}
@@ -354,7 +355,7 @@ const Reports = () => {
                         {m.status}
                       </span>
                     </td>
-                    <td className="px-gutter py-3 text-right font-bold text-on-surface">₹{m.cost.toFixed(2)}</td>
+                    <td className="px-gutter py-3 text-right font-bold text-on-surface">{formatCurrency(m.cost)}</td>
                   </tr>
                 ))
               )}
